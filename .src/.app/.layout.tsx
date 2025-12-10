@@ -1,6 +1,6 @@
 export const metadata = {
   title: "Happin",
-  description: "Discover real experiences happening around you",
+  description: "Hassle free Work.",
 };
 
 export default function RootLayout({ children }) {
