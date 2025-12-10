@@ -2,7 +2,7 @@ export default function HomePage() {
   return (
     <main>
       <h1>Welcome to Happin 👋</h1>
-      <p>Discover what's happening around you.</p>
+      <p>The Unified AI Communication Hub for Modern Teams.</p>
     </main>
   );
 }
