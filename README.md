@@ -1,2 +1,2 @@
 # Happin
-Hyperlocal social experiences platform
+The Unified AI Communication Hub for Modern Teams
