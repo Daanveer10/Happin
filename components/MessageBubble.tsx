@@ -32,8 +32,17 @@ const sentimentColors: Record<string, string> = {
 };
 
 export default function MessageBubble({ message, onMarkRead, onUpdatePriority }: MessageBubbleProps) {
-  const formatDate = (date: string | Date) => {
-    const d = typeof date === "string" ? new Date(date) : date;
+  const formatDate = (date: string | Date | any) => {
+    // Handle Firestore Timestamp
+    let d: Date;
+    if (date && typeof date === "object" && "toDate" in date) {
+      d = date.toDate();
+    } else if (typeof date === "string") {
+      d = new Date(date);
+    } else {
+      d = date as Date;
+    }
+    
     return d.toLocaleString("en-US", {
       weekday: "long",
       year: "numeric",

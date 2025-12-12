@@ -40,8 +40,17 @@ export default function ConversationList({
   onSelectMessage,
   onMarkRead,
 }: ConversationListProps) {
-  const formatTime = (date: string | Date) => {
-    const d = typeof date === "string" ? new Date(date) : date;
+  const formatTime = (date: string | Date | any) => {
+    // Handle Firestore Timestamp
+    let d: Date;
+    if (date && typeof date === "object" && "toDate" in date) {
+      d = date.toDate();
+    } else if (typeof date === "string") {
+      d = new Date(date);
+    } else {
+      d = date as Date;
+    }
+    
     const now = new Date();
     const diff = now.getTime() - d.getTime();
     const hours = diff / (1000 * 60 * 60);
