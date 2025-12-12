@@ -134,18 +134,36 @@ export default function ConversationList({
 
                 <p className="text-sm text-gray-600 line-clamp-2">{getPreview(message)}</p>
 
-                {message.tags && message.tags.length > 0 && (
-                  <div className="flex gap-1 mt-2 flex-wrap">
-                    {message.tags.slice(0, 3).map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {/* AI Indicators */}
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  {message.aiProcessed && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                      🤖 AI
+                    </span>
+                  )}
+                  {(message as any).actionRequired && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded">
+                      ⚠️ Action
+                    </span>
+                  )}
+                  {(message as any).intent && (
+                    <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">
+                      {(message as any).intent}
+                    </span>
+                  )}
+                  {message.tags && message.tags.length > 0 && (
+                    <>
+                      {message.tags.slice(0, 2).map((tag, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </>
+                  )}
+                </div>
 
                 {isUnread && (
                   <div className="mt-2">

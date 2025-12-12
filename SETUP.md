@@ -9,7 +9,7 @@ Happin is a unified communication platform that combines messages from WhatsApp,
 - **Frontend**: Next.js 14 with React and TypeScript
 - **Backend**: Next.js API Routes
 - **Database**: Firebase Firestore
-- **AI**: Custom priority and summarization (ready for OpenAI integration)
+- **AI**: Groq-powered priority detection, summarization, and intent analysis
 - **Styling**: Tailwind CSS
 
 ## Prerequisites
@@ -47,8 +47,9 @@ Create a `.env.local` file:
 ```env
 FIREBASE_SERVICE_ACCOUNT='{"type":"service_account","project_id":"...","private_key_id":"...","private_key":"...","client_email":"...","client_id":"...","auth_uri":"...","token_uri":"...","auth_provider_x509_cert_url":"...","client_x509_cert_url":"..."}'
 
-# Optional: For enhanced AI features
-OPENAI_API_KEY=sk-...
+# Optional: For enhanced AI features (Groq)
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=llama-3.1-70b-versatile  # Optional: defaults to llama-3.1-70b-versatile
 
 # Optional: Webhook secrets
 TWILIO_AUTH_TOKEN=your_twilio_auth_token

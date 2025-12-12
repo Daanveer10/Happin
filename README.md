@@ -6,7 +6,7 @@ The Unified AI Communication Hub for Modern Teams
 ## ✨ Features
 
 - 📬 **Unified Inbox**: All messages from different channels in one place
-- 🤖 **AI-Powered**: Automatic priority detection and message summarization
+- 🤖 **AI-Powered**: Groq-powered automatic priority detection, summarization, and intent analysis
 - 🔔 **Smart Filtering**: Filter by channel, unread status, and priority
 - 📊 **Real-time Updates**: See new messages as they arrive
 - 🎯 **Priority System**: Messages automatically ranked 1-5 based on urgency

@@ -35,11 +35,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({
         summary: summary.summary,
         keyPoints: summary.keyPoints,
+        actionItems: summary.actionItems || [],
         priority: priority.priority,
         priorityReason: priority.reason,
         category: priority.category,
         tags: priority.tags,
         sentiment: priority.sentiment,
+        intent: priority.intent,
+        actionRequired: priority.actionRequired,
       });
     } else if (text) {
       // Summarize provided text
@@ -63,11 +66,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({
         summary: summary.summary,
         keyPoints: summary.keyPoints,
+        actionItems: summary.actionItems || [],
         priority: priority.priority,
         priorityReason: priority.reason,
         category: priority.category,
         tags: priority.tags,
         sentiment: priority.sentiment,
+        intent: priority.intent,
+        actionRequired: priority.actionRequired,
       });
     } else {
       return res.status(400).json({ error: "Either messageId or text is required" });

@@ -40,6 +40,10 @@ export interface Message {
   category?: string;
   tags?: string[];
   sentiment?: "positive" | "neutral" | "negative";
+  intent?: string; // "question" | "request" | "complaint" | "info" | "spam" | "other"
+  actionRequired?: boolean;
+  keyPoints?: string[];
+  actionItems?: string[];
   channelData: Record<string, any>;
   aiProcessed: boolean;
   aiProcessedAt?: Timestamp | Date | string;

@@ -92,7 +92,7 @@ export default function MessageBubble({ message, onMarkRead, onUpdatePriority }:
           <h2 className="text-lg font-medium text-gray-900 mb-2">{message.subject}</h2>
         )}
 
-        <div className="flex items-center gap-4 text-sm text-gray-500">
+        <div className="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
           <span>{formatDate(message.receivedAt)}</span>
           {message.sentiment && (
             <span className={sentimentColors[message.sentiment]}>
@@ -104,15 +104,83 @@ export default function MessageBubble({ message, onMarkRead, onUpdatePriority }:
               {message.category}
             </span>
           )}
+          {message.aiProcessed && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+              <span>✨</span> AI Processed
+            </span>
+          )}
+          {!message.aiProcessed && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
+              <span>⏳</span> Processing...
+            </span>
+          )}
         </div>
       </div>
 
       {/* Message Body */}
       <div className="flex-1 overflow-y-auto p-6">
+        {/* AI Summary - Always shown if available */}
         {message.summary && (
-          <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
-            <h3 className="font-semibold text-blue-900 mb-2">AI Summary</h3>
-            <p className="text-blue-800">{message.summary}</p>
+          <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">🤖</span>
+              <h3 className="font-semibold text-blue-900">AI Summary</h3>
+              {message.aiProcessed && (
+                <span className="ml-auto text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                  Auto-processed
+                </span>
+              )}
+            </div>
+            <p className="text-blue-900 leading-relaxed">{message.summary}</p>
+          </div>
+        )}
+
+        {/* Key Points - If available */}
+        {(message as any).keyPoints && Array.isArray((message as any).keyPoints) && (message as any).keyPoints.length > 0 && (
+          <div className="mb-6 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-lg">
+            <h3 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
+              <span>📌</span> Key Points
+            </h3>
+            <ul className="space-y-2">
+              {(message as any).keyPoints.map((point: string, idx: number) => (
+                <li key={idx} className="text-amber-800 flex items-start gap-2">
+                  <span className="text-amber-600 mt-1">•</span>
+                  <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Action Items - If available */}
+        {(message as any).actionItems && Array.isArray((message as any).actionItems) && (message as any).actionItems.length > 0 && (
+          <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
+            <h3 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
+              <span>✅</span> Action Items
+            </h3>
+            <ul className="space-y-2">
+              {(message as any).actionItems.map((item: string, idx: number) => (
+                <li key={idx} className="text-green-800 flex items-start gap-2">
+                  <span className="text-green-600 mt-1">▸</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Intent Badge */}
+        {(message as any).intent && (
+          <div className="mb-4">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+              <span>🎯</span>
+              Intent: {(message as any).intent}
+            </span>
+            {(message as any).actionRequired && (
+              <span className="ml-2 inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                ⚠️ Action Required
+              </span>
+            )}
           </div>
         )}
 
