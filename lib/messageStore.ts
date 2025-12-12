@@ -47,6 +47,21 @@ export interface Message {
   updatedAt: Timestamp | Date | string;
 }
 
+// Helper function to convert Timestamp | Date | string to Date
+function toDate(value: Timestamp | Date | string): Date {
+  if (value instanceof Date) {
+    return value;
+  }
+  if (typeof value === "string") {
+    return new Date(value);
+  }
+  // It's a Timestamp - check if it has toDate method
+  if (value && typeof value === "object" && "toDate" in value) {
+    return (value as any).toDate();
+  }
+  return new Date();
+}
+
 export async function saveMessage(message: Omit<Message, "id" | "createdAt" | "updatedAt">): Promise<string> {
   const db = getFirestore();
   if (!db) {
@@ -67,16 +82,16 @@ export async function saveMessage(message: Omit<Message, "id" | "createdAt" | "u
   // Convert dates to Firestore Timestamps
   const firestoreMessage: any = {
     ...messageData,
-    receivedAt: admin.firestore.Timestamp.fromDate(new Date(messageData.receivedAt)),
-    createdAt: admin.firestore.Timestamp.fromDate(new Date(messageData.createdAt)),
-    updatedAt: admin.firestore.Timestamp.fromDate(new Date(messageData.updatedAt)),
+    receivedAt: admin.firestore.Timestamp.fromDate(toDate(messageData.receivedAt)),
+    createdAt: admin.firestore.Timestamp.fromDate(toDate(messageData.createdAt)),
+    updatedAt: admin.firestore.Timestamp.fromDate(toDate(messageData.updatedAt)),
   };
 
   if (messageData.sentAt) {
-    firestoreMessage.sentAt = admin.firestore.Timestamp.fromDate(new Date(messageData.sentAt));
+    firestoreMessage.sentAt = admin.firestore.Timestamp.fromDate(toDate(messageData.sentAt));
   }
   if (messageData.aiProcessedAt) {
-    firestoreMessage.aiProcessedAt = admin.firestore.Timestamp.fromDate(new Date(messageData.aiProcessedAt));
+    firestoreMessage.aiProcessedAt = admin.firestore.Timestamp.fromDate(toDate(messageData.aiProcessedAt));
   }
 
   const ref = await db.collection("messages").add(firestoreMessage);
