@@ -1,3 +1,4 @@
+import admin from "firebase-admin";
 import { getFirestore } from "./firebase";
 import type { Message } from "./messageStore";
 
@@ -136,8 +137,8 @@ export async function processMessageWithAI(messageId: string, message: Message):
       sentiment: priorityResult.sentiment,
       summary: summaryResult.summary,
       aiProcessed: true,
-      aiProcessedAt: db.Timestamp.now(),
-      updatedAt: db.Timestamp.now(),
+      aiProcessedAt: admin.firestore.Timestamp.now(),
+      updatedAt: admin.firestore.Timestamp.now(),
     });
   } catch (error) {
     console.error(`Failed to process message ${messageId} with AI:`, error);

@@ -1,3 +1,4 @@
+import admin from "firebase-admin";
 import { getFirestore } from "./firebase";
 import type { Timestamp } from "firebase-admin/firestore";
 
@@ -66,16 +67,16 @@ export async function saveMessage(message: Omit<Message, "id" | "createdAt" | "u
   // Convert dates to Firestore Timestamps
   const firestoreMessage: any = {
     ...messageData,
-    receivedAt: db.Timestamp.fromDate(new Date(messageData.receivedAt)),
-    createdAt: db.Timestamp.fromDate(new Date(messageData.createdAt)),
-    updatedAt: db.Timestamp.fromDate(new Date(messageData.updatedAt)),
+    receivedAt: admin.firestore.Timestamp.fromDate(new Date(messageData.receivedAt)),
+    createdAt: admin.firestore.Timestamp.fromDate(new Date(messageData.createdAt)),
+    updatedAt: admin.firestore.Timestamp.fromDate(new Date(messageData.updatedAt)),
   };
 
   if (messageData.sentAt) {
-    firestoreMessage.sentAt = db.Timestamp.fromDate(new Date(messageData.sentAt));
+    firestoreMessage.sentAt = admin.firestore.Timestamp.fromDate(new Date(messageData.sentAt));
   }
   if (messageData.aiProcessedAt) {
-    firestoreMessage.aiProcessedAt = db.Timestamp.fromDate(new Date(messageData.aiProcessedAt));
+    firestoreMessage.aiProcessedAt = admin.firestore.Timestamp.fromDate(new Date(messageData.aiProcessedAt));
   }
 
   const ref = await db.collection("messages").add(firestoreMessage);
@@ -131,7 +132,7 @@ export async function markAsRead(messageId: string): Promise<void> {
 
   await db.collection("messages").doc(messageId).update({
     read: true,
-    updatedAt: db.Timestamp.now(),
+    updatedAt: admin.firestore.Timestamp.now(),
   });
 }
 
@@ -148,7 +149,7 @@ export async function updateMessagePriority(
   await db.collection("messages").doc(messageId).update({
     priority,
     priorityReason: reason,
-    updatedAt: db.Timestamp.now(),
+    updatedAt: admin.firestore.Timestamp.now(),
   });
 }
 
