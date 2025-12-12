@@ -1,1 +1,17 @@
-
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Messages collection - read/write for authenticated users
+    // In production, add proper authentication checks
+    match /messages/{messageId} {
+      allow read: if true; // Public read for now - restrict in production
+      allow write: if false; // Only server-side writes via API
+    }
+    
+    // Conversations collection
+    match /conversations/{conversationId} {
+      allow read: if true;
+      allow write: if false; // Only server-side writes via API
+    }
+  }
+}
