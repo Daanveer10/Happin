@@ -8,6 +8,14 @@ interface SidebarProps {
     unread: number;
     byChannel: Record<string, number>;
   };
+  user?: {
+    name: string;
+    email?: string;
+    phone?: string;
+    company?: string;
+    role?: string;
+  };
+  onLogout?: () => void;
 }
 
 const channels = [
@@ -19,12 +27,26 @@ const channels = [
   { id: "sms", name: "SMS", icon: "📱" },
 ];
 
-export default function Sidebar({ onFilterChange, currentFilter, stats }: SidebarProps) {
+export default function Sidebar({ onFilterChange, currentFilter, stats, user, onLogout }: SidebarProps) {
   return (
     <div className="w-64 bg-gray-900 text-white flex flex-col h-full">
       <div className="p-6 border-b border-gray-800">
         <h1 className="text-2xl font-bold">Happin</h1>
         <p className="text-sm text-gray-400 mt-1">Unified Inbox</p>
+        {user && (
+          <div className="mt-4 pt-4 border-t border-gray-800">
+            <p className="text-sm font-medium text-white">{user.name}</p>
+            {user.email && (
+              <p className="text-xs text-gray-400 mt-1">{user.email}</p>
+            )}
+            {user.phone && !user.email && (
+              <p className="text-xs text-gray-400 mt-1">{user.phone}</p>
+            )}
+            {user.company && (
+              <p className="text-xs text-gray-500 mt-1">{user.company}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -99,7 +121,15 @@ export default function Sidebar({ onFilterChange, currentFilter, stats }: Sideba
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-800">
+      <div className="p-4 border-t border-gray-800 space-y-2">
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="w-full py-2 px-4 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            Logout
+          </button>
+        )}
         <p className="text-xs text-gray-500 text-center">
           Powered by AI • Unified Communication
         </p>

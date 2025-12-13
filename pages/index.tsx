@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import Sidebar from "@/components/sidebar";
 import ConversationList from "@/components/ConversationList";
 import MessageBubble from "@/components/MessageBubble";
 import type { Message } from "@/lib/messageStore";
 
 export default function Home() {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedMessageId, setSelectedMessageId] = useState<string | undefined>();
   const [filter, setFilter] = useState<{ channel?: string; unreadOnly?: boolean }>({});
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
 
   const fetchMessages = async () => {
     try {
@@ -28,12 +32,50 @@ export default function Home() {
     }
   };
 
+  // Check authentication
   useEffect(() => {
-    fetchMessages();
-    // Poll for new messages every 30 seconds
-    const interval = setInterval(fetchMessages, 30000);
-    return () => clearInterval(interval);
-  }, [filter]);
+    const checkAuth = async () => {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          localStorage.removeItem("auth_token");
+          localStorage.removeItem("user_id");
+          router.push("/login");
+          return;
+        }
+
+        const data = await res.json();
+        setUser(data.user);
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        router.push("/login");
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchMessages();
+      // Poll for new messages every 30 seconds
+      const interval = setInterval(fetchMessages, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [filter, authLoading, user]);
 
   const handleMarkRead = async (messageId: string) => {
     try {
@@ -73,9 +115,30 @@ export default function Home() {
     }, {} as Record<string, number>),
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("user_id");
+    router.push("/login");
+  };
+
+  if (authLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect to login
+  }
+
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar onFilterChange={setFilter} currentFilter={filter} stats={stats} />
+      <Sidebar onFilterChange={setFilter} currentFilter={filter} stats={stats} user={user} onLogout={handleLogout} />
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-96 flex-shrink-0">
