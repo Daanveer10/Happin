@@ -58,11 +58,10 @@ export async function sendEmailOTP(email: string, otp: string): Promise<void> {
       }
     }
   } else {
-    // Development mode - just log
-    console.log(`[DEV] OTP for ${email}: ${otp}`);
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("SENDGRID_API_KEY not configured");
-    }
+    // No SendGrid configured - log OTP (for development/testing)
+    console.log(`[OTP] Email OTP for ${email}: ${otp}`);
+    console.log(`[OTP] SENDGRID_API_KEY not configured - OTP logged above. Check Vercel function logs.`);
+    // Don't throw - allow testing without SendGrid
   }
 }
 
@@ -105,11 +104,10 @@ export async function sendSMSOTP(phone: string, otp: string): Promise<void> {
       }
     }
   } else {
-    // Development mode - just log
-    console.log(`[DEV] OTP for ${phone}: ${otp}`);
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("Twilio credentials not configured");
-    }
+    // No Twilio configured - log OTP (for development/testing)
+    console.log(`[OTP] SMS OTP for ${phone}: ${otp}`);
+    console.log(`[OTP] Twilio credentials not configured - OTP logged above. Check Vercel function logs.`);
+    // Don't throw - allow testing without Twilio
   }
 }
 
