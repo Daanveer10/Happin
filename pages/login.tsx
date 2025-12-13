@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential } from "firebase/auth";
+import { auth } from "@/lib/firebaseClient";
 
 export default function Login() {
   const router = useRouter();
@@ -10,28 +12,69 @@ export default function Login() {
   const [step, setStep] = useState<"input" | "otp">("input");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [otpFromResponse, setOtpFromResponse] = useState<string | null>(null);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+
+  // Initialize reCAPTCHA for phone auth
+  useEffect(() => {
+    if (type === "phone" && auth && !recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
+          size: "invisible",
+        });
+      } catch (error) {
+        console.error("reCAPTCHA initialization error:", error);
+      }
+    }
+  }, [type]);
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setOtpFromResponse(null);
 
     try {
-      const res = await fetch("/api/auth/otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, type }),
-      });
+      if (type === "phone" && auth) {
+        // Use Firebase Auth for phone
+        if (!recaptchaVerifierRef.current) {
+          recaptchaVerifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
+            size: "invisible",
+          });
+        }
 
-      const data = await res.json();
+        const confirmationResult = await signInWithPhoneNumber(
+          auth,
+          identifier,
+          recaptchaVerifierRef.current
+        );
+        
+        setVerificationId(confirmationResult.verificationId);
+        setStep("otp");
+      } else {
+        // Use API for email
+        const res = await fetch("/api/auth/otp/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier, type }),
+        });
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to send OTP");
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to send OTP");
+        }
+
+        // Store OTP if returned (for testing when SendGrid not configured)
+        if (data.otp) {
+          setOtpFromResponse(data.otp);
+        }
+
+        setStep("otp");
       }
-
-      setStep("otp");
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Failed to send OTP");
     } finally {
       setLoading(false);
     }
@@ -43,26 +86,61 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, otp, type, isSignup: false }),
-      });
+      if (type === "phone" && verificationId && auth) {
+        // Verify phone OTP using Firebase Auth
+        const credential = PhoneAuthProvider.credential(verificationId, otp);
+        const userCredential = await signInWithCredential(auth, credential);
+        const firebaseUser = userCredential.user;
 
-      const data = await res.json();
+        // Now sync with our backend user system
+        const res = await fetch("/api/auth/otp/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            identifier: firebaseUser.phoneNumber || identifier,
+            otp,
+            type: "phone",
+            isSignup: false,
+            firebaseUid: firebaseUser.uid,
+          }),
+        });
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to verify OTP");
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to verify OTP");
+        }
+
+        // Store token
+        localStorage.setItem("auth_token", data.token);
+        localStorage.setItem("user_id", data.userId);
+        localStorage.setItem("firebase_uid", firebaseUser.uid);
+
+        // Redirect to inbox
+        router.push("/");
+      } else {
+        // Verify email OTP via API
+        const res = await fetch("/api/auth/otp/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier, otp, type, isSignup: false }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to verify OTP");
+        }
+
+        // Store token
+        localStorage.setItem("auth_token", data.token);
+        localStorage.setItem("user_id", data.userId);
+
+        // Redirect to inbox
+        router.push("/");
       }
-
-      // Store token
-      localStorage.setItem("auth_token", data.token);
-      localStorage.setItem("user_id", data.userId);
-
-      // Redirect to inbox
-      router.push("/");
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Failed to verify OTP");
     } finally {
       setLoading(false);
     }
@@ -158,7 +236,15 @@ export default function Login() {
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-widest"
               />
+              {otpFromResponse && (
+                <p className="mt-2 text-sm text-blue-600">
+                  Your OTP: <strong>{otpFromResponse}</strong> (SendGrid not configured)
+                </p>
+              )}
             </div>
+            
+            {/* Hidden reCAPTCHA container for phone auth */}
+            <div id="recaptcha-container"></div>
 
             <div className="flex gap-3">
               <button

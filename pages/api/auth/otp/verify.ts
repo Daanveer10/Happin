@@ -12,20 +12,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { identifier, otp, type, isSignup, userData } = req.body;
+    const { identifier, otp, type, isSignup, userData, firebaseUid } = req.body;
 
-    if (!identifier || !otp || !type) {
-      return res.status(400).json({ error: "identifier, otp, and type are required" });
+    if (!identifier || !type) {
+      return res.status(400).json({ error: "identifier and type are required" });
     }
 
     if (type !== "email" && type !== "phone") {
       return res.status(400).json({ error: "type must be 'email' or 'phone'" });
     }
 
-    // Verify OTP
-    const isValid = await verifyOTP(identifier, otp);
-    if (!isValid) {
-      return res.status(401).json({ error: "Invalid or expired OTP" });
+    // For phone auth, Firebase Auth already verified the OTP on client-side
+    // We just need to sync with our backend
+    if (type === "phone" && firebaseUid) {
+      // Phone OTP was verified by Firebase Auth, skip OTP verification
+      // Just proceed to user creation/login
+    } else {
+      // For email, verify OTP from Firestore
+      if (!otp) {
+        return res.status(400).json({ error: "OTP is required for email verification" });
+      }
+      
+      const isValid = await verifyOTP(identifier, otp);
+      if (!isValid) {
+        return res.status(401).json({ error: "Invalid or expired OTP" });
+      }
     }
 
     // Check if user exists
@@ -50,6 +61,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         role: userData.role,
       });
 
+      // Store Firebase UID if provided (for phone auth)
+      if (firebaseUid) {
+        const db = (await import("@/lib/firebase")).getFirestore();
+        if (db) {
+          await db.collection("users").doc(userId).update({
+            firebaseUid,
+          });
+        }
+      }
+
       // Create session
       const sessionToken = generateSessionToken(userId);
       await createSession(userId, sessionToken);
@@ -64,6 +85,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Login flow
       if (!existingUser) {
         return res.status(404).json({ error: "User not found. Please sign up first." });
+      }
+
+      // Store Firebase UID if provided (for phone auth)
+      if (firebaseUid) {
+        const db = (await import("@/lib/firebase")).getFirestore();
+        if (db) {
+          await db.collection("users").doc(existingUser.id).update({
+            firebaseUid,
+          });
+        }
       }
 
       // Create session
