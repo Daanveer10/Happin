@@ -83,20 +83,47 @@ export async function saveMessage(message: Omit<Message, "id" | "createdAt" | "u
     updatedAt: now,
   };
 
-  // Convert dates to Firestore Timestamps
+  // Convert dates to Firestore Timestamps and remove undefined values
   const firestoreMessage: any = {
-    ...messageData,
     receivedAt: admin.firestore.Timestamp.fromDate(toDate(messageData.receivedAt)),
     createdAt: admin.firestore.Timestamp.fromDate(toDate(messageData.createdAt)),
     updatedAt: admin.firestore.Timestamp.fromDate(toDate(messageData.updatedAt)),
+    channel: messageData.channel,
+    channelId: messageData.channelId,
+    from: messageData.from,
+    body: messageData.body,
+    read: messageData.read,
+    archived: messageData.archived,
+    aiProcessed: messageData.aiProcessed,
+    channelData: messageData.channelData || {},
   };
 
+  // Add optional fields only if they exist and are not undefined
+  if (messageData.threadId) firestoreMessage.threadId = messageData.threadId;
+  if (messageData.to && Array.isArray(messageData.to) && messageData.to.length > 0) {
+    firestoreMessage.to = messageData.to;
+  }
+  if (messageData.subject) firestoreMessage.subject = messageData.subject;
+  if (messageData.htmlBody) firestoreMessage.htmlBody = messageData.htmlBody;
+  if (messageData.attachments && messageData.attachments.length > 0) {
+    firestoreMessage.attachments = messageData.attachments;
+  }
   if (messageData.sentAt) {
     firestoreMessage.sentAt = admin.firestore.Timestamp.fromDate(toDate(messageData.sentAt));
   }
   if (messageData.aiProcessedAt) {
     firestoreMessage.aiProcessedAt = admin.firestore.Timestamp.fromDate(toDate(messageData.aiProcessedAt));
   }
+  if (messageData.priority !== undefined) firestoreMessage.priority = messageData.priority;
+  if (messageData.priorityReason) firestoreMessage.priorityReason = messageData.priorityReason;
+  if (messageData.summary) firestoreMessage.summary = messageData.summary;
+  if (messageData.category) firestoreMessage.category = messageData.category;
+  if (messageData.tags && messageData.tags.length > 0) firestoreMessage.tags = messageData.tags;
+  if (messageData.sentiment) firestoreMessage.sentiment = messageData.sentiment;
+  if (messageData.intent) firestoreMessage.intent = messageData.intent;
+  if (messageData.actionRequired !== undefined) firestoreMessage.actionRequired = messageData.actionRequired;
+  if (messageData.keyPoints && messageData.keyPoints.length > 0) firestoreMessage.keyPoints = messageData.keyPoints;
+  if (messageData.actionItems && messageData.actionItems.length > 0) firestoreMessage.actionItems = messageData.actionItems;
 
   const ref = await db.collection("messages").add(firestoreMessage);
   return ref.id;
