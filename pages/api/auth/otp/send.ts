@@ -1,74 +1,44 @@
+// pages/api/auth/otp/send.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { generateOTP, storeOTP } from "@/lib/auth";
-import { sendEmailOTP } from "@/lib/otpService";
+import { generateOTP, storeOTP } from "@/lib/auth"; // Your DB helpers
+import { sendEmailOTP } from "@/lib/otpService"; // Your Nodemailer/SendGrid wrapper
 
-/**
- * POST /api/auth/otp/send
- * Send OTP to email or phone
- * Body: { identifier: string, type: "email" | "phone" }
- * 
- * For phone: Returns verificationId for Firebase Auth
- * For email: Generates and stores OTP in Firestore
- */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  if (req.method !== "POST") return res.status(405).end();
+
+  const { identifier, type } = req.body;
 
   try {
-    const { identifier, type } = req.body;
-
-    if (!identifier || !type) {
-      return res.status(400).json({ error: "identifier and type are required" });
-    }
-
-    if (type !== "email" && type !== "phone") {
-      return res.status(400).json({ error: "type must be 'email' or 'phone'" });
-    }
-
-    // Validate email format
+    // --- 1. EMAIL LOGIC ---
     if (type === "email") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(identifier)) {
-        return res.status(400).json({ error: "Invalid email format" });
-      }
+      const otp = generateOTP(); 
+      await storeOTP(identifier, otp, type); // Save to DB
 
-      // Generate OTP for email
-      const otp = generateOTP();
-
-      // Store OTP in Firestore
-      await storeOTP(identifier, otp, type);
-
-      // Send email OTP (logs to console if SendGrid not configured)
+      // IMPORTANT: If this fails, we catch the error so the server doesn't crash
       try {
         await sendEmailOTP(identifier, otp);
-      } catch (error) {
-        console.error("Email OTP sending error:", error);
-        // Continue - OTP is stored and logged
+      } catch (emailError) {
+        console.error("Failed to send email:", emailError);
+        return res.status(500).json({ error: "Could not send email. Check server logs." });
       }
 
-      // Check if SendGrid is configured
-      const hasSendGrid = !!process.env.SENDGRID_API_KEY;
-
-      return res.status(200).json({
-        ok: true,
-        message: hasSendGrid ? "OTP sent to email" : "OTP generated (check logs or response)",
-        otp: hasSendGrid ? undefined : otp, // Include OTP if SendGrid not configured
-        warning: hasSendGrid ? undefined : "SENDGRID_API_KEY not configured. OTP logged to console and included in response for testing.",
+      // SECURITY FIX: Do NOT send 'otp' in this response!
+      return res.status(200).json({ 
+        ok: true, 
+        message: "OTP sent to email" 
       });
-    } else {
-      // Phone authentication - handled client-side with Firebase Auth
-      // Return instructions for client-side implementation
+    } 
+
+    // --- 2. PHONE LOGIC ---
+    else if (type === "phone") {
       return res.status(200).json({
         ok: true,
-        message: "Use Firebase Auth on client-side for phone authentication",
-        useFirebaseAuth: true,
-        phone: identifier,
-        note: "Phone OTP should be sent using Firebase Auth's signInWithPhoneNumber on the client side",
+        useFirebaseAuth: true, // This flag tells frontend to run signInWithPhoneNumber
       });
     }
+
   } catch (error: any) {
-    console.error("OTP send error:", error);
-    return res.status(500).json({ error: error.message || "Internal server error" });
+    console.error("Send Error:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 }
