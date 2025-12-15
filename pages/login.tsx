@@ -25,14 +25,24 @@ export default function Login() {
 
   // ✅ Initialize reCAPTCHA ONCE (client-side)
   useEffect(() => {
-    if (type === "phone" && !recaptchaVerifierRef.current) {
+    if (type !== "phone") return;
+    if (recaptchaVerifierRef.current) return;
+    if (typeof window === "undefined") return;
+  
+    const container = document.getElementById("recaptcha-container");
+    if (!container) return;
+  
+    try {
       recaptchaVerifierRef.current = new RecaptchaVerifier(
         auth,
         "recaptcha-container",
         { size: "invisible" }
       );
+    } catch (err) {
+      console.error("Recaptcha init failed:", err);
     }
   }, [type]);
+  
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
