@@ -25,6 +25,8 @@ function initApp() {
     admin.initializeApp({
       credential: admin.credential.cert(credentials as admin.ServiceAccount)
     });
+
+    admin.firestore().settings({ignoreUndefinedProperties: true});
     
     console.log("Firebase Admin initialized successfully");
     initError = null;
