@@ -1,11 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { verifySession, getUser } from "@/lib/auth";
 
-/**
- * GET /api/auth/me
- * Get current user from session token
- * Header: Authorization: Bearer <token>
- */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -43,7 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error) {
     console.error("Auth me error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ 
+      error: "Internal server error" ,
+      details: error.message });
   }
 }
 
