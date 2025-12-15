@@ -6,6 +6,7 @@ import {
   signInWithPhoneNumber,
   PhoneAuthProvider,
   signInWithCredential,
+  type Auth,
 } from "firebase/auth";
 import { auth } from "@/lib/firebaseClient";
 
@@ -23,27 +24,37 @@ export default function Login() {
 
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
-  // ✅ Initialize reCAPTCHA ONCE (client-side)
-  useEffect(() => {
-    if (type !== "phone") return;
-    if (recaptchaVerifierRef.current) return;
-    if (typeof window === "undefined") return;
-  
-    const container = document.getElementById("recaptcha-container");
-    if (!container) return;
-  
-    try {
-      recaptchaVerifierRef.current = new RecaptchaVerifier(
-        auth,
-        "recaptcha-container",
-        { size: "invisible" }
-      );
-    } catch (err) {
-      console.error("Recaptcha init failed:", err);
-    }
-  }, [type]);
-  
+  /* --------------------------------------------------
+     Initialize reCAPTCHA (SAFE + STABLE)
+     -------------------------------------------------- */
+     useEffect(() => {
+      if (type !== "phone") return;
+      if (recaptchaVerifierRef.current) return;
+      if (typeof window === "undefined") return;
+    
+      const containerId = "recaptcha-container";
+    
+      try {
+        const Recaptcha = RecaptchaVerifier as unknown as new (
+          container: string,
+          parameters: any,
+          Auth: typeof auth,
+        ) => RecaptchaVerifier;
+    
+        recaptchaVerifierRef.current = new Recaptcha(
+          containerId,
+          { size: "invisible" },
+          auth
+        );
+      } catch (err) {
+        console.error("Recaptcha init failed:", err);
+      }
+    }, [type]);
+    
 
+  /* --------------------------------------------------
+     Send OTP
+     -------------------------------------------------- */
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -53,20 +64,24 @@ export default function Login() {
     try {
       if (type === "phone") {
         if (!identifier.startsWith("+")) {
-          throw new Error("Phone number must include country code (E.164 format)");
+          throw new Error("Phone number must be in E.164 format (e.g. +1234567890)");
+        }
+
+        if (!recaptchaVerifierRef.current) {
+          throw new Error("reCAPTCHA not ready. Please try again.");
         }
 
         const confirmationResult = await signInWithPhoneNumber(
           auth,
           identifier,
-          recaptchaVerifierRef.current!
+          recaptchaVerifierRef.current
         );
 
         setVerificationId(confirmationResult.verificationId);
         setStep("otp");
 
-        // Reset reCAPTCHA after use
-        recaptchaVerifierRef.current?.clear();
+        // Clear verifier after use
+        recaptchaVerifierRef.current.clear();
         recaptchaVerifierRef.current = null;
       } else {
         const res = await fetch("/api/auth/otp/send", {
@@ -88,6 +103,9 @@ export default function Login() {
     }
   };
 
+  /* --------------------------------------------------
+     Verify OTP
+     -------------------------------------------------- */
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -141,9 +159,12 @@ export default function Login() {
     }
   };
 
+  /* --------------------------------------------------
+     JSX
+     -------------------------------------------------- */
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      {/* MUST exist before sending OTP */}
+      {/* MUST be mounted before OTP */}
       <div id="recaptcha-container"></div>
 
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
