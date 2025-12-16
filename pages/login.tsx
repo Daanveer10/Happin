@@ -6,7 +6,7 @@ import {
   signInWithPhoneNumber,
   PhoneAuthProvider,
   signInWithCredential,
-  type Auth,
+  signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "@/lib/firebaseClient";
 
@@ -15,6 +15,8 @@ export default function Login() {
 
   const [identifier, setIdentifier] = useState("");
   const [type, setType] = useState<"email" | "phone">("email");
+  const [password, setPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"password" | "otp">("password");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"input" | "otp">("input");
   const [loading, setLoading] = useState(false);
@@ -23,6 +25,10 @@ export default function Login() {
   const [otpFromResponse, setOtpFromResponse] = useState<string | null>(null);
 
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+
+  const resetErrors = () => {
+    setError("");
+  };
 
   /* --------------------------------------------------
      Initialize reCAPTCHA (SAFE + STABLE)
@@ -155,6 +161,43 @@ export default function Login() {
   };
 
   /* --------------------------------------------------
+     Password login
+     -------------------------------------------------- */
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    resetErrors();
+    setLoading(true);
+
+    try {
+      if (!identifier || !password) {
+        throw new Error("Email and password are required");
+      }
+
+      const userCredential = await signInWithEmailAndPassword(auth, identifier, password);
+      const idToken = await userCredential.user.getIdToken();
+
+      const res = await fetch("/api/auth/password/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed");
+
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("user_id", data.userId);
+      localStorage.setItem("firebase_uid", userCredential.user.uid);
+
+      router.push("/");
+    } catch (err: any) {
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* --------------------------------------------------
      JSX
      -------------------------------------------------- */
   return (
@@ -165,13 +208,64 @@ export default function Login() {
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <h1 className="text-3xl font-bold text-center mb-6">Welcome to Happin</h1>
 
+        <div className="flex gap-2 justify-center mb-4">
+          <button
+            type="button"
+            className={`px-3 py-2 rounded ${authMode === "password" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+            onClick={() => {
+              setAuthMode("password");
+              setStep("input");
+              resetErrors();
+            }}
+          >
+            Password
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-2 rounded ${authMode === "otp" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+            onClick={() => {
+              setAuthMode("otp");
+              setType("email");
+              setStep("input");
+              resetErrors();
+            }}
+          >
+            OTP
+          </button>
+        </div>
+
         {error && (
           <div className="mb-4 p-3 bg-red-50 text-red-700 rounded">
             {error}
           </div>
         )}
 
-        {step === "input" ? (
+        {authMode === "password" ? (
+          <form onSubmit={handlePasswordLogin} className="space-y-4">
+            <input
+              type="email"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="you@example.com"
+              required
+              className="w-full p-3 border rounded"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              required
+              className="w-full p-3 border rounded"
+            />
+            <button
+              disabled={loading}
+              className="w-full bg-blue-600 text-white p-3 rounded disabled:opacity-50"
+            >
+              {loading ? "Logging in..." : "Login"}
+            </button>
+          </form>
+        ) : step === "input" ? (
           <form onSubmit={handleSendOTP} className="space-y-4">
             <div className="flex gap-2">
               <button type="button" onClick={() => setType("email")}>📧 Email</button>

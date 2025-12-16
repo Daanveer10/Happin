@@ -6,6 +6,7 @@ import {
   signInWithPhoneNumber,
   PhoneAuthProvider,
   signInWithCredential,
+  createUserWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "@/lib/firebaseClient";
 
@@ -14,6 +15,8 @@ export default function Signup() {
 
   const [identifier, setIdentifier] = useState("");
   const [type, setType] = useState<"email" | "phone">("email");
+  const [password, setPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"password" | "otp">("password");
   const [otp, setOtp] = useState("");
   const [userData, setUserData] = useState({ name: "", company: "", role: "" });
   const [step, setStep] = useState<"details" | "otp">("details");
@@ -23,6 +26,8 @@ export default function Signup() {
   const [otpFromResponse, setOtpFromResponse] = useState<string | null>(null);
 
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+
+  const resetErrors = () => setError("");
 
   // Initialize reCAPTCHA (client-only)
   useEffect(() => {
@@ -154,6 +159,43 @@ export default function Signup() {
     }
   };
 
+  /* --------------------------------------------------
+     Password signup
+     -------------------------------------------------- */
+  const handlePasswordSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    resetErrors();
+    setLoading(true);
+
+    try {
+      if (!identifier || !password || !userData.name) {
+        throw new Error("Name, email, and password are required");
+      }
+
+      const userCredential = await createUserWithEmailAndPassword(auth, identifier, password);
+      const idToken = await userCredential.user.getIdToken();
+
+      const res = await fetch("/api/auth/password/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, userData }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Signup failed");
+
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("user_id", data.userId);
+      localStorage.setItem("firebase_uid", userCredential.user.uid);
+
+      router.push("/");
+    } catch (err: any) {
+      setError(err.message || "Signup failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       {/* MUST exist before sending OTP */}
@@ -162,13 +204,88 @@ export default function Signup() {
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <h1 className="text-3xl font-bold text-center mb-6">Create Account</h1>
 
+        <div className="flex gap-2 justify-center mb-4">
+          <button
+            type="button"
+            className={`px-3 py-2 rounded ${authMode === "password" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+            onClick={() => {
+              setAuthMode("password");
+              setStep("details");
+              resetErrors();
+            }}
+          >
+            Password
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-2 rounded ${authMode === "otp" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+            onClick={() => {
+              setAuthMode("otp");
+              setType("email");
+              setStep("details");
+              resetErrors();
+            }}
+          >
+            OTP
+          </button>
+        </div>
+
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
             {error}
           </div>
         )}
 
-        {step === "details" ? (
+        {authMode === "password" ? (
+          <form onSubmit={handlePasswordSignup} className="space-y-4">
+            <input
+              placeholder="Full Name"
+              value={userData.name}
+              onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+              required
+              className="w-full p-3 border rounded"
+            />
+
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              required
+              className="w-full p-3 border rounded"
+            />
+
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full p-3 border rounded"
+            />
+
+            <input
+              placeholder="Company (optional)"
+              value={userData.company}
+              onChange={(e) => setUserData({ ...userData, company: e.target.value })}
+              className="w-full p-3 border rounded"
+            />
+
+            <input
+              placeholder="Role (optional)"
+              value={userData.role}
+              onChange={(e) => setUserData({ ...userData, role: e.target.value })}
+              className="w-full p-3 border rounded"
+            />
+
+            <button
+              disabled={loading}
+              className="w-full bg-blue-600 text-white p-3 rounded disabled:opacity-50"
+            >
+              {loading ? "Creating account..." : "Sign up"}
+            </button>
+          </form>
+        ) : step === "details" ? (
           <form onSubmit={handleSendOTP} className="space-y-4">
             <input
               placeholder="Full Name"
