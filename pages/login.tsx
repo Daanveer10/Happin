@@ -32,19 +32,14 @@ export default function Login() {
       if (recaptchaVerifierRef.current) return;
       if (typeof window === "undefined") return;
     
-      const containerId = "recaptcha-container";
+      const container = document.getElementById("recaptcha-container");
+      if (!container) return;
     
       try {
-        const Recaptcha = RecaptchaVerifier as unknown as new (
-          container: string,
-          parameters: any,
-          Auth: typeof auth,
-        ) => RecaptchaVerifier;
-    
-        recaptchaVerifierRef.current = new Recaptcha(
-          containerId,
-          { size: "invisible" },
-          auth
+        recaptchaVerifierRef.current = new RecaptchaVerifier(
+          auth,
+          "recaptcha-container",
+          { size: "invisible" }
         );
       } catch (err) {
         console.error("Recaptcha init failed:", err);

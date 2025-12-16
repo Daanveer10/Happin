@@ -4,44 +4,43 @@
 
 import { getFirestore } from "./firebase";
 import admin from "firebase-admin";
+import nodemailer from "nodemailer";
+
+// Nodemailer (Gmail) transporter
+const gmailUser = process.env.GMAIL_USER;
+const gmailPass = process.env.GMAIL_PASS; // Use an App Password for Gmail
+
+const mailTransporter =
+  gmailUser && gmailPass
+    ? nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: gmailUser,
+          pass: gmailPass,
+        },
+      })
+    : null;
 
 export async function sendEmailOTP(email: string, otp: string): Promise<void> {
   const db = getFirestore();
   if (!db) throw new Error("Firestore not initialized");
 
-  // Store OTP in Firestore (already done by storeOTP, but we can also log it)
+  // Always log for debugging
   console.log(`[OTP] Email OTP for ${email}: ${otp}`);
-  console.log(`[OTP] Check Vercel function logs to see OTP code.`);
-  
-  // For production, you can integrate with SendGrid here if needed
-  // For now, we'll rely on the OTP being stored in Firestore and logged
-  // Users can check Vercel logs or the API response will include it
-  
-  // Optional: If you have SendGrid configured, use it
-  const sendGridApiKey = process.env.SENDGRID_API_KEY;
-  if (sendGridApiKey) {
-    try {
-      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${sendGridApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          personalizations: [
-            {
-              to: [{ email }],
+
+  if (!mailTransporter) {
+    console.warn(
+      "[OTP] Nodemailer Gmail transporter not configured. Set GMAIL_USER and GMAIL_PASS to send real emails."
+    );
+    return;
+  }
+
+  try {
+    await mailTransporter.sendMail({
+      from: `"Happin" <${gmailUser}>`,
+      to: email,
               subject: "Your Happin Login Code",
-            },
-          ],
-          from: {
-            email: process.env.SENDGRID_FROM_EMAIL || "noreply@happin.app",
-            name: "Happin",
-          },
-          content: [
-            {
-              type: "text/html",
-              value: `
+      html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                   <h2>Your Happin Login Code</h2>
                   <p>Your verification code is:</p>
@@ -52,20 +51,10 @@ export async function sendEmailOTP(email: string, otp: string): Promise<void> {
                   <p>If you didn't request this code, please ignore this email.</p>
                 </div>
               `,
-            },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        console.error("SendGrid error:", error);
-        // Don't throw - fall back to logging
-      }
+    });
     } catch (error) {
-      console.error("Email sending failed:", error);
-      // Don't throw - fall back to logging
-    }
+    console.error("Email sending failed (Nodemailer Gmail):", error);
+    // Do not throw – OTP is still stored in Firestore and logged
   }
 }
 

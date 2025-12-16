@@ -59,10 +59,14 @@ export default function Signup() {
           throw new Error("Phone number must include country code (E.164 format)");
         }
 
+        if (!recaptchaVerifierRef.current) {
+          throw new Error("reCAPTCHA not ready. Please try again.");
+        }
+
         const confirmationResult = await signInWithPhoneNumber(
           auth,
           phoneNumber,
-          recaptchaVerifierRef.current!
+          recaptchaVerifierRef.current
         );
 
         setVerificationId(confirmationResult.verificationId);
@@ -153,7 +157,7 @@ export default function Signup() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       {/* MUST exist before sending OTP */}
-      <div id="recaptcha-container-signup"></div>
+      <div id="recaptcha-container"></div>
 
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <h1 className="text-3xl font-bold text-center mb-6">Create Account</h1>
